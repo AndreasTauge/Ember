@@ -11,6 +11,11 @@ enum Operation {
     Leaf,
     Add(ValueId, ValueId),
     Mul(ValueId, ValueId),
+    Sub(ValueId, ValueId),
+    Div(ValueId, ValueId),
+    Pow(ValueId, f32),
+    Exp(ValueId),
+    Tanh(ValueId),
 }
 
 struct Graph {
@@ -53,6 +58,66 @@ impl Graph {
         id
     }
 
+    fn sub(&mut self, left: ValueId, right: ValueId) -> ValueId {
+        let data = self.nodes[left].data - self.nodes[right].data;
+        let id = self.nodes.len();
+
+        self.nodes.push(Node {
+            data,
+            grad: 0.0,
+            operation: Operation::Sub(left, right),
+        });
+        id
+    }
+
+    fn div(&mut self, left: ValueId, right: ValueId) -> ValueId {
+        let data = self.nodes[left].data / self.nodes[right].data;
+        let id = self.nodes.len();
+
+        self.nodes.push(Node {
+            data,
+            grad: 0.0,
+            operation: Operation::Div(left, right),
+        });
+        id
+    }
+
+    fn pow(&mut self, left: ValueId, exp: f32) -> ValueId {
+        let data = self.nodes[left].data.powf(exp);
+        let id = self.nodes.len();
+
+        self.nodes.push(Node {
+            data,
+            grad: 0.0,
+            operation: Operation::Pow(left, exp),
+        });
+        id
+    }
+
+    fn exp(&mut self, left: ValueId) -> ValueId {
+        let data = self.nodes[left].data.exp();
+        let id = self.nodes.len();
+
+        self.nodes.push(Node {
+            data,
+            grad: 0.0,
+            operation: Operation::Exp(left),
+        });
+        id
+    }
+
+    fn tanh(&mut self, left: ValueId) -> ValueId {
+        let data = self.nodes[left].data.tanh();
+        let id = self.nodes.len();
+
+        self.nodes.push(Node {
+            data,
+            grad: 0.0,
+            operation: Operation::Tanh(left),
+        });
+        id
+    }
+
     fn backward(&mut self) {
         if self.nodes.is_empty() {
             return;
@@ -82,6 +147,34 @@ impl Graph {
 
                     self.nodes[left].grad += right_data * grad;
                     self.nodes[right].grad += left_data * grad;
+                }
+
+                Operation::Sub(left, right) => {
+                    self.nodes[left].grad += grad;
+                    self.nodes[right].grad -= grad;
+                }
+
+                Operation::Div(left, right) => {
+                    let left_data = self.nodes[left].data;
+                    let right_data = self.nodes[right].data;
+
+                    self.nodes[left].grad += (1.0 / right_data) * grad;
+                    self.nodes[right].grad += (-left_data / (right_data.powi(2))) * grad;
+                }
+
+                Operation::Pow(left, exp) => {
+                    let left_data = self.nodes[left].data;
+                    self.nodes[left].grad += exp * left_data.powf(exp - 1.0) * grad;
+                }
+
+                Operation::Exp(left) => {
+                    let data = self.nodes[i].data;
+                    self.nodes[left].grad += data * grad;
+                }
+
+                Operation::Tanh(left) => {
+                    let data = self.nodes[i].data;
+                    self.nodes[left].grad += (1.0 - data.powi(2)) * grad;
                 }
             }
         }
