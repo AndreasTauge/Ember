@@ -109,4 +109,54 @@ impl Tensor {
             shape: vec![],
         }
     }
+    pub fn add_scalar(&self, value: f32) -> Tensor {
+        let data = self.values.iter().map(|x| x + value).collect();
+
+        Tensor {
+            values: data,
+            shape: self.shape.clone(),
+        }
+    }
+
+    pub fn sub_scalar(&self, value: f32) -> Tensor {
+        let data = self.values.iter().map(|x| x - value).collect();
+
+        Tensor {
+            values: data,
+            shape: self.shape.clone(),
+        }
+    }
+    pub fn values(&self) -> &[f32] {
+        &self.values
+    }
+
+    pub fn shape(&self) -> &[usize] {
+        &self.shape
+    }
+
+    pub fn item(&self) -> f32 {
+        assert_eq!(self.values.len(), 1);
+        self.values[0]
+    }
+
+    pub fn zeros_like(&self) -> Tensor {
+        Tensor {
+            values: vec![0.0; self.values.len()],
+            shape: self.shape.clone(),
+        }
+    }
+
+    pub fn ones_like(&self) -> Tensor {
+        Tensor {
+            values: vec![1.0; self.values.len()],
+            shape: self.shape.clone(),
+        }
+    }
+
+    pub fn full_like(&self, value: f32) -> Tensor {
+        Tensor {
+            values: vec![value; self.values.len()],
+            shape: self.shape.clone(),
+        }
+    }
 }
