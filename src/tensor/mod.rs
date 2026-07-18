@@ -1,3 +1,4 @@
+#[derive(Clone)]
 pub struct Tensor {
     values: Vec<f32>,
     shape: Vec<usize>,
@@ -126,6 +127,16 @@ impl Tensor {
             shape: self.shape.clone(),
         }
     }
+
+    pub fn mul_scalar(&self, value: f32) -> Tensor {
+        let data = self.values.iter().map(|x| x * value).collect();
+
+        Tensor {
+            values: data,
+            shape: self.shape.clone(),
+        }
+    }
+
     pub fn values(&self) -> &[f32] {
         &self.values
     }
@@ -174,7 +185,7 @@ impl Tensor {
                 let mut sum = 0.0;
 
                 for k in 0..n {
-                    sum += self.values[i * n + k] + other.values[k * p + j];
+                    sum += self.values[i * n + k] * other.values[k * p + j];
                 }
                 out[i * p + j] = sum;
             }
