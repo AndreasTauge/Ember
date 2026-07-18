@@ -1,8 +1,8 @@
 use crate::tensor::Tensor;
 
-type TensorId = usize;
+pub type TensorId = usize;
 
-struct Node {
+pub struct Node {
     data: Tensor,
     grad: Tensor,
     operation: Operation,
@@ -18,14 +18,18 @@ enum Operation {
     Pow(TensorId, f32),
     Exp(TensorId),
     Tanh(TensorId),
+    Sum(TensorId),
 }
 
-struct Graph {
+pub struct Graph {
     nodes: Vec<Node>,
 }
 
 impl Graph {
-    fn tensor(&mut self, data: Tensor) -> TensorId {
+    pub fn new(nodes: Vec<Node>) -> Graph {
+        Graph { nodes }
+    }
+    pub fn tensor(&mut self, data: Tensor) -> TensorId {
         let id = self.nodes.len();
         let grad = data.zeros_like();
 
@@ -36,8 +40,11 @@ impl Graph {
         });
         id
     }
+    pub fn grad(&self, id: TensorId) -> &Tensor {
+        &self.nodes[id].grad
+    }
 
-    fn add(&mut self, left: TensorId, right: TensorId) -> TensorId {
+    pub fn add(&mut self, left: TensorId, right: TensorId) -> TensorId {
         let data = self.nodes[left].data.add(&self.nodes[right].data);
         let id = self.nodes.len();
         let grad = data.zeros_like();
@@ -50,7 +57,7 @@ impl Graph {
         id
     }
 
-    fn mul(&mut self, left: TensorId, right: TensorId) -> TensorId {
+    pub fn mul(&mut self, left: TensorId, right: TensorId) -> TensorId {
         let data = self.nodes[left].data.mul(&self.nodes[right].data);
         let id = self.nodes.len();
         let grad = data.zeros_like();
@@ -63,7 +70,7 @@ impl Graph {
         id
     }
 
-    fn sub(&mut self, left: TensorId, right: TensorId) -> TensorId {
+    pub fn sub(&mut self, left: TensorId, right: TensorId) -> TensorId {
         let data = self.nodes[left].data.sub(&self.nodes[right].data);
         let id = self.nodes.len();
         let grad = data.zeros_like();
@@ -76,7 +83,7 @@ impl Graph {
         id
     }
 
-    fn div(&mut self, left: TensorId, right: TensorId) -> TensorId {
+    pub fn div(&mut self, left: TensorId, right: TensorId) -> TensorId {
         let data = self.nodes[left].data.div(&self.nodes[right].data);
         let id = self.nodes.len();
         let grad = data.zeros_like();
@@ -89,7 +96,7 @@ impl Graph {
         id
     }
 
-    fn pow(&mut self, left: TensorId, exp: f32) -> TensorId {
+    pub fn pow(&mut self, left: TensorId, exp: f32) -> TensorId {
         let data = self.nodes[left].data.pow(exp);
         let id = self.nodes.len();
         let grad = data.zeros_like();
@@ -102,7 +109,7 @@ impl Graph {
         id
     }
 
-    fn exp(&mut self, left: TensorId) -> TensorId {
+    pub fn exp(&mut self, left: TensorId) -> TensorId {
         let data = self.nodes[left].data.exp();
         let id = self.nodes.len();
         let grad = data.zeros_like();
@@ -115,7 +122,7 @@ impl Graph {
         id
     }
 
-    fn tanh(&mut self, left: TensorId) -> TensorId {
+    pub fn tanh(&mut self, left: TensorId) -> TensorId {
         let data = self.nodes[left].data.tanh();
         let id = self.nodes.len();
         let grad = data.zeros_like();
@@ -128,7 +135,20 @@ impl Graph {
         id
     }
 
-    fn backward(&mut self) {
+    pub fn sum(&mut self, left: TensorId) -> TensorId {
+        let data = self.nodes[left].data.sum();
+        let id = self.nodes.len();
+        let grad = data.zeros_like();
+
+        self.nodes.push(Node {
+            data,
+            grad,
+            operation: Operation::Sum(left),
+        });
+        id
+    }
+
+    pub fn backward(&mut self) {
         if self.nodes.is_empty() {
             return;
         }
@@ -201,6 +221,13 @@ impl Graph {
                     let local_grad = data.pow(2.0).mul_scalar(-1.0).add_scalar(1.0).mul(&grad);
 
                     self.nodes[left].grad = self.nodes[left].grad.add(&local_grad);
+                }
+
+                Operation::Sum(value) => {
+                    let scalar_grad = grad.item();
+                    let local_grad = self.nodes[value].data.full_like(scalar_grad);
+
+                    self.nodes[value].grad = self.nodes[value].grad.add(&local_grad);
                 }
             }
         }
