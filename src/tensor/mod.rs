@@ -159,4 +159,30 @@ impl Tensor {
             shape: self.shape.clone(),
         }
     }
+
+    pub fn matmul(&self, other: Tensor) -> Tensor {
+        let m = self.shape[0];
+        let n = self.shape[1];
+        let n2 = other.shape[0];
+        let p = other.shape[1];
+        assert_eq!(n, n2);
+
+        let mut out = vec![0.0; m * p];
+
+        for i in 0..m {
+            for j in 0..p {
+                let mut sum = 0.0;
+
+                for k in 0..n {
+                    sum += self.values[i * n + k] + other.values[k * p + j];
+                }
+                out[i * p + j] = sum;
+            }
+        }
+
+        Tensor {
+            values: out,
+            shape: vec![m, p],
+        }
+    }
 }
