@@ -19,6 +19,7 @@ enum Operation {
     Exp(TensorId),
     Tanh(TensorId),
     Sum(TensorId),
+    MatMul(TensorId, TensorId),
 }
 
 pub struct Graph {
@@ -148,6 +149,19 @@ impl Graph {
         id
     }
 
+    pub fn matmul(&mut self, left: TensorId, right: TensorId) -> TensorId {
+        let data = self.nodes[left].data.matmul(&self.nodes[right].data);
+        let id = self.nodes.len();
+        let grad = data.zeros_like();
+
+        self.nodes.push(Node {
+            data,
+            grad,
+            operation: Operation::MatMul(left, right),
+        });
+        id
+    }
+
     pub fn backward(&mut self) {
         if self.nodes.is_empty() {
             return;
@@ -228,6 +242,17 @@ impl Graph {
                     let local_grad = self.nodes[value].data.full_like(scalar_grad);
 
                     self.nodes[value].grad = self.nodes[value].grad.add(&local_grad);
+                }
+
+                Operation::MatMul(left, right) => {
+                    let left_data = &self.nodes[left].data;
+                    let right_data = &self.nodes[right].data;
+
+                    let left_grad = grad.matmul(&right_data.transpose());
+                    let right_grad = left_data.transpose().matmul(&grad);
+
+                    self.nodes[left].grad = self.nodes[left].grad.add(&left_grad);
+                    self.nodes[right].grad = self.nodes[right].grad.add(&right_grad);
                 }
             }
         }

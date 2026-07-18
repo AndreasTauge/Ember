@@ -171,7 +171,7 @@ impl Tensor {
         }
     }
 
-    pub fn matmul(&self, other: Tensor) -> Tensor {
+    pub fn matmul(&self, other: &Tensor) -> Tensor {
         let m = self.shape[0];
         let n = self.shape[1];
         let n2 = other.shape[0];
@@ -195,5 +195,22 @@ impl Tensor {
             values: out,
             shape: vec![m, p],
         }
+    }
+
+    pub fn transpose(&self) -> Tensor {
+        assert_eq!(self.shape.len(), 2);
+
+        let rows = self.shape[0];
+        let cols = self.shape[1];
+
+        let mut out = vec![0.0; self.values.len()];
+
+        for i in 0..rows {
+            for j in 0..cols {
+                out[j * rows + i] = self.values[i * cols + j];
+            }
+        }
+
+        Tensor::new(out, vec![cols, rows])
     }
 }
