@@ -13,18 +13,76 @@ impl Tensor {
     }
 
     pub fn add(&self, other: &Tensor) -> Tensor {
-        assert_eq!(self.shape, other.shape);
-
-        let data = self
-            .values
-            .iter()
-            .zip(other.values.iter())
-            .map(|(a, b)| a + b)
+        let shape = Self::broadcast_shape(&self.shape, &other.shape);
+        let len = shape.iter().product();
+        let data = (0..len)
+            .map(|index| {
+                self.values[Self::broadcast_index(index, &shape, &self.shape)]
+                    + other.values[Self::broadcast_index(index, &shape, &other.shape)]
+            })
             .collect();
         Tensor {
             values: data,
-            shape: self.shape.clone(),
+            shape,
         }
+    }
+
+    fn broadcast_shape(left: &[usize], right: &[usize]) -> Vec<usize> {
+        let rank = left.len().max(right.len());
+        let mut shape = Vec::with_capacity(rank);
+
+        for axis in 0..rank {
+            let left_dim = axis
+                .checked_sub(rank - left.len())
+                .map_or(1, |index| left[index]);
+            let right_dim = axis
+                .checked_sub(rank - right.len())
+                .map_or(1, |index| right[index]);
+            assert!(
+                left_dim == right_dim || left_dim == 1 || right_dim == 1,
+                "cannot broadcast shapes {:?} and {:?}",
+                left,
+                right
+            );
+            shape.push(left_dim.max(right_dim));
+        }
+
+        shape
+    }
+
+    fn broadcast_index(mut index: usize, output_shape: &[usize], input_shape: &[usize]) -> usize {
+        let rank_offset = output_shape.len() - input_shape.len();
+        let mut input_index = 0;
+        let mut input_stride = 1;
+
+        for output_axis in (0..output_shape.len()).rev() {
+            let coordinate = index % output_shape[output_axis];
+            index /= output_shape[output_axis];
+
+            if output_axis >= rank_offset {
+                let input_dim = input_shape[output_axis - rank_offset];
+                input_index += if input_dim == 1 { 0 } else { coordinate } * input_stride;
+                input_stride *= input_dim;
+            }
+        }
+
+        input_index
+    }
+
+    pub(crate) fn sum_to_shape(&self, shape: &[usize]) -> Tensor {
+        let broadcasted = Self::broadcast_shape(&self.shape, shape);
+        assert_eq!(
+            broadcasted, self.shape,
+            "cannot reduce {:?} to {:?}",
+            self.shape, shape
+        );
+
+        let mut values = vec![0.0; shape.iter().product()];
+        for (index, value) in self.values.iter().enumerate() {
+            let target_index = Self::broadcast_index(index, &self.shape, shape);
+            values[target_index] += value;
+        }
+        Tensor::new(values, shape.to_vec())
     }
     pub fn sub(&self, other: &Tensor) -> Tensor {
         assert_eq!(self.shape, other.shape);
@@ -212,5 +270,22 @@ impl Tensor {
         }
 
         Tensor::new(out, vec![cols, rows])
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn add_broadcasts_trailing_dimensions() {
+        let matrix = Tensor::new(vec![1.0, 2.0, 3.0, 4.0, 5.0, 6.0], vec![2, 3]);
+        let row = Tensor::new(vec![10.0, 20.0, 30.0], vec![3]);
+
+        let result = matrix.add(&row);
+
+        assert_eq!(result.shape(), &[2, 3]);
+        assert_eq!(result.values(), &[11.0, 22.0, 33.0, 14.0, 25.0, 36.0]);
+        assert_eq!(result.sum_to_shape(&[3]).values(), &[25.0, 47.0, 69.0]);
     }
 }

@@ -22,13 +22,14 @@ enum Operation {
     MatMul(TensorId, TensorId),
 }
 
+#[derive(Default)]
 pub struct Graph {
     nodes: Vec<Node>,
 }
 
 impl Graph {
     pub fn new() -> Graph {
-        Graph { nodes: Vec::new() }
+        Graph::default()
     }
     pub fn tensor(&mut self, data: Tensor) -> TensorId {
         let id = self.nodes.len();
@@ -43,6 +44,10 @@ impl Graph {
     }
     pub fn grad(&self, id: TensorId) -> &Tensor {
         &self.nodes[id].grad
+    }
+
+    pub fn data(&self, id: TensorId) -> &Tensor {
+        &self.nodes[id].data
     }
 
     pub fn add(&mut self, left: TensorId, right: TensorId) -> TensorId {
@@ -181,8 +186,10 @@ impl Graph {
                 Operation::Leaf => {}
 
                 Operation::Add(left, right) => {
-                    self.nodes[left].grad = self.nodes[left].grad.add(&grad);
-                    self.nodes[right].grad = self.nodes[right].grad.add(&grad);
+                    let left_grad = grad.sum_to_shape(self.nodes[left].data.shape());
+                    let right_grad = grad.sum_to_shape(self.nodes[right].data.shape());
+                    self.nodes[left].grad = self.nodes[left].grad.add(&left_grad);
+                    self.nodes[right].grad = self.nodes[right].grad.add(&right_grad);
                 }
 
                 Operation::Mul(left, right) => {
