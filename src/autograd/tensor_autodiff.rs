@@ -27,8 +27,8 @@ pub struct Graph {
 }
 
 impl Graph {
-    pub fn new(nodes: Vec<Node>) -> Graph {
-        Graph { nodes }
+    pub fn new() -> Graph {
+        Graph { nodes: Vec::new() }
     }
     pub fn tensor(&mut self, data: Tensor) -> TensorId {
         let id = self.nodes.len();
