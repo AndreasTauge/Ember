@@ -46,8 +46,8 @@ mod tests {
         assert_eq!(graph.data(output).shape(), &[2, 2]);
         assert_close(graph.data(output).values(), &[7.5, 9.5, 15.5, 21.5]);
 
-        graph.sum(output);
-        graph.backward();
+        let loss = graph.sum(output);
+        graph.backward(loss);
 
         assert_close(graph.grad(input).values(), &[3.0, 7.0, 3.0, 7.0]);
         assert_close(graph.grad(linear.weight).values(), &[4.0, 4.0, 6.0, 6.0]);

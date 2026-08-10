@@ -20,6 +20,7 @@ enum Operation {
     Tanh(TensorId),
     Sum(TensorId),
     MatMul(TensorId, TensorId),
+    Mean(TensorId),
 }
 
 #[derive(Default)]
@@ -167,7 +168,20 @@ impl Graph {
         id
     }
 
-    pub fn backward(&mut self) {
+    pub fn mean(&mut self, left: TensorId) -> TensorId {
+        let data = self.nodes[left].data.mean();
+        let id = self.nodes.len();
+        let grad = data.zeros_like();
+
+        self.nodes.push(Node {
+            data,
+            grad,
+            operation: Operation::Mean(left),
+        });
+        id
+    }
+
+    pub fn backward(&mut self, output: TensorId) {
         if self.nodes.is_empty() {
             return;
         }
@@ -175,10 +189,9 @@ impl Graph {
             node.grad = node.data.zeros_like();
         }
 
-        let end = self.nodes.len() - 1;
-        self.nodes[end].grad = self.nodes[end].data.ones_like();
+        self.nodes[output].grad = self.nodes[output].data.ones_like();
 
-        for i in (0..=end).rev() {
+        for i in (0..=output).rev() {
             let grad = self.nodes[i].grad.clone();
             let operation = self.nodes[i].operation;
 
@@ -260,6 +273,14 @@ impl Graph {
 
                     self.nodes[left].grad = self.nodes[left].grad.add(&left_grad);
                     self.nodes[right].grad = self.nodes[right].grad.add(&right_grad);
+                }
+
+                Operation::Mean(left) => {
+                    let count = self.nodes[left].data.values().len() as f32;
+                    let scalar_grad = grad.item() / count;
+                    let local_grad = self.nodes[left].data.full_like(scalar_grad);
+
+                    self.nodes[left].grad = self.nodes[left].grad.add(&local_grad);
                 }
             }
         }
