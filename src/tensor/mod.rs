@@ -12,19 +12,27 @@ impl Tensor {
         Tensor { values, shape }
     }
 
-    pub fn add(&self, other: &Tensor) -> Tensor {
+    fn binary_op<F>(&self, other: &Tensor, operation: F) -> Tensor
+    where
+        F: Fn(f32, f32) -> f32,
+    {
         let shape = Self::broadcast_shape(&self.shape, &other.shape);
         let len = shape.iter().product();
-        let data = (0..len)
+
+        let values = (0..len)
             .map(|index| {
-                self.values[Self::broadcast_index(index, &shape, &self.shape)]
-                    + other.values[Self::broadcast_index(index, &shape, &other.shape)]
+                let left_index = Self::broadcast_index(index, &shape, &self.shape);
+
+                let right_index = Self::broadcast_index(index, &shape, &other.shape);
+
+                let left = self.values[left_index];
+                let right = other.values[right_index];
+
+                operation(left, right)
             })
             .collect();
-        Tensor {
-            values: data,
-            shape,
-        }
+
+        Tensor { values, shape }
     }
 
     fn broadcast_shape(left: &[usize], right: &[usize]) -> Vec<usize> {
@@ -84,50 +92,19 @@ impl Tensor {
         }
         Tensor::new(values, shape.to_vec())
     }
+
+    pub fn add(&self, other: &Tensor) -> Tensor {
+        self.binary_op(other, |left, right| left + right)
+    }
+
     pub fn sub(&self, other: &Tensor) -> Tensor {
-        assert_eq!(self.shape, other.shape);
-
-        let data = self
-            .values
-            .iter()
-            .zip(other.values.iter())
-            .map(|(a, b)| a - b)
-            .collect();
-
-        Tensor {
-            values: data,
-            shape: self.shape.clone(),
-        }
+        self.binary_op(other, |left, right| left - right)
     }
     pub fn mul(&self, other: &Tensor) -> Tensor {
-        assert_eq!(self.shape, other.shape);
-
-        let data = self
-            .values
-            .iter()
-            .zip(other.values.iter())
-            .map(|(a, b)| a * b)
-            .collect();
-
-        Tensor {
-            values: data,
-            shape: self.shape.clone(),
-        }
+        self.binary_op(other, |left, right| left * right)
     }
     pub fn div(&self, other: &Tensor) -> Tensor {
-        assert_eq!(self.shape, other.shape);
-
-        let data = self
-            .values
-            .iter()
-            .zip(other.values.iter())
-            .map(|(a, b)| a / b)
-            .collect();
-
-        Tensor {
-            values: data,
-            shape: self.shape.clone(),
-        }
+        self.binary_op(other, |left, right| left / right)
     }
     pub fn exp(&self) -> Tensor {
         let data = self.values.iter().map(|x| x.exp()).collect();

@@ -3,7 +3,7 @@
 Ember is a small neural-network and automatic-differentiation project written
 in Rust. I made it for fun to learn about machine learning (or i guess the math behind it): the goal is to get more familiar with
 how tensors, computation graphs, forward passes, and backward
-passes work and maybe i will use it for some future machine learning project if it is not insanely slow.
+passes work and maybe i will use it for some future machine learning project if it is not insanely slow. 
 
 ## Project structure
 
@@ -13,7 +13,7 @@ src/
 │   └── mod.rs                 Tensor storage and numerical operations
 ├── autograd/
 │   ├── mod.rs                 Exposes the tensor autograd module
-│   ├── scalar_autodiff.rs     Earlier scalar-based autograd implementation
+│   ├── scalar_autodiff.rs     Earlier scalar-based autograd implementation that i quickly abandoned
 │   └── tensor_autodiff.rs     Tensor computation graph and backpropagation
 ├── nn/
 │   ├── mod.rs                 Exposes neural-network layers
@@ -29,7 +29,7 @@ tensor  ->  autograd  ->  nn
 numbers     gradients     layers
 ```
 
-## `tensor`: values, shapes, and math
+## `tensor`: values, shapes, and math operations
 
 `Tensor` is Ember's basic data container. It stores all values in one flat
 `Vec<f32>` and stores a separate shape describing how those values should be
@@ -66,7 +66,7 @@ The tensor module currently implements:
 ### Broadcasting
 
 Addition supports broadcasting. Broadcasting lets a smaller tensor be reused
-across a larger tensor when their trailing dimensions are compatible.
+across a larger tensor when their latter dimensions are compatible. This makes forward passes a bit easier because you can batch examples and the bias addition will still work with a smaller bias tensor. 
 
 For example, a matrix with shape `[2, 3]` can be added to a vector with shape
 `[3]`:
@@ -190,7 +190,7 @@ loss node before calling `backward()`.
 
 `scalar_autodiff.rs` contains the earlier version of the same idea using single
 `f32` values instead of tensors. It is useful as a simpler reference for
-understanding the graph and chain rule, but it is not currently exported by
+understanding the graph and chain rule, but it is not currently used in
 `autograd/mod.rs`.
 
 ## `nn`: reusable neural-network layers
@@ -261,10 +261,8 @@ println!("loss: {}", graph.data(loss).item());
 Ember is still small and intentionally incomplete. In particular:
 
 - Matrix multiplication currently supports only two-dimensional tensors.
-- Only addition currently supports broadcasting.
 - Shapes are checked at runtime with assertions rather than a structured error
   type.
-- `backward()` always starts from the graph's most recently created node.
 - There is no optimizer or parameter-update step yet.
 - There are no activation, loss, or container layers in `nn` yet.
 - Tensors run only on the CPU and use `f32` values.

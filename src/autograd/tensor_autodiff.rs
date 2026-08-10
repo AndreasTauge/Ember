@@ -199,8 +199,12 @@ impl Graph {
                 Operation::Leaf => {}
 
                 Operation::Add(left, right) => {
-                    let left_grad = grad.sum_to_shape(self.nodes[left].data.shape());
-                    let right_grad = grad.sum_to_shape(self.nodes[right].data.shape());
+                    let left_shape = self.nodes[left].data.shape();
+                    let right_shape = self.nodes[right].data.shape();
+
+                    let left_grad = grad.sum_to_shape(left_shape);
+                    let right_grad = grad.sum_to_shape(right_shape);
+
                     self.nodes[left].grad = self.nodes[left].grad.add(&left_grad);
                     self.nodes[right].grad = self.nodes[right].grad.add(&right_grad);
                 }
@@ -209,28 +213,41 @@ impl Graph {
                     let left_data = &self.nodes[left].data;
                     let right_data = &self.nodes[right].data;
 
-                    let left_grad = right_data.mul(&grad);
-                    let right_grad = left_data.mul(&grad);
+                    let left_shape = self.nodes[left].data.shape();
+                    let right_shape = self.nodes[right].data.shape();
+
+                    let left_grad = right_data.mul(&grad).sum_to_shape(left_shape);
+                    let right_grad = left_data.mul(&grad).sum_to_shape(right_shape);
 
                     self.nodes[left].grad = self.nodes[left].grad.add(&left_grad);
                     self.nodes[right].grad = self.nodes[right].grad.add(&right_grad);
                 }
 
                 Operation::Sub(left, right) => {
-                    self.nodes[left].grad = self.nodes[left].grad.add(&grad);
-                    self.nodes[right].grad = self.nodes[right].grad.sub(&grad);
+                    let left_shape = self.nodes[left].data.shape();
+                    let right_shape = self.nodes[right].data.shape();
+
+                    let left_grad = grad.sum_to_shape(left_shape);
+                    let right_grad = grad.mul_scalar(-1.0).sum_to_shape(right_shape);
+
+                    self.nodes[left].grad = self.nodes[left].grad.add(&left_grad);
+                    self.nodes[right].grad = self.nodes[right].grad.add(&right_grad);
                 }
 
                 Operation::Div(left, right) => {
                     let left_data = &self.nodes[left].data;
                     let right_data = &self.nodes[right].data;
 
-                    let left_grad = right_data.ones_like().div(right_data).mul(&grad);
+                    let left_shape = self.nodes[left].data.shape();
+                    let right_shape = self.nodes[right].data.shape();
 
-                    let right_grad = left_data
+                    let left_grad = grad.div(right_data).sum_to_shape(left_shape);
+
+                    let right_grad = grad
+                        .mul(left_data)
                         .div(&right_data.pow(2.0))
                         .mul_scalar(-1.0)
-                        .mul(&grad);
+                        .sum_to_shape(right_shape);
 
                     self.nodes[left].grad = self.nodes[left].grad.add(&left_grad);
                     self.nodes[right].grad = self.nodes[right].grad.add(&right_grad);
