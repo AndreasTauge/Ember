@@ -57,4 +57,16 @@ mod tests {
         assert_close(graph.grad(linear.weight).values(), &[4.0, 4.0, 6.0, 6.0]);
         assert_close(graph.grad(linear.bias).values(), &[2.0, 2.0]);
     }
+
+    #[test]
+    fn parameters_returns_weight_and_bias() {
+        let mut graph = Graph::new();
+        let linear = Linear::new(
+            &mut graph,
+            Tensor::new(vec![1.0], vec![1, 1]),
+            Tensor::new(vec![0.0], vec![1]),
+        );
+
+        assert_eq!(linear.parameters(), [linear.weight, linear.bias]);
+    }
 }

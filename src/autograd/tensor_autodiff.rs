@@ -44,9 +44,8 @@ impl Graph {
         id
     }
 
-    pub fn update(&mut self, id: TensorId, learning_rate: f32) {
-        let update = self.nodes[id].grad.mul_scalar(learning_rate);
-        self.nodes[id].data = self.nodes[id].data.sub(&update);
+    pub fn add_to_data(&mut self, id: TensorId, change: &Tensor) {
+        self.nodes[id].data = self.nodes[id].data.add(change);
     }
 
     pub fn grad(&self, id: TensorId) -> &Tensor {
