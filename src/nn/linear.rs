@@ -15,6 +15,10 @@ impl Linear {
         Linear { weight, bias }
     }
 
+    pub fn parameters(&self) -> [TensorId; 2] {
+        [self.weight, self.bias]
+    }
+
     pub fn forward(&self, graph: &mut Graph, input: TensorId) -> TensorId {
         let weighted = graph.matmul(input, self.weight);
         graph.add(weighted, self.bias)
